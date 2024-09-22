@@ -2,7 +2,6 @@ import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
 import java.util.Random;
-import javax.swing.JPanel;
 
 public class GamePanel extends JPanel implements ActionListener {
 
@@ -19,8 +18,11 @@ public class GamePanel extends JPanel implements ActionListener {
     int appleY;
     char direction = 'R';
     boolean running = false;
+    boolean multiColorSnake = false;
+    boolean showGrid = false;
     Timer timer;
     Random random;
+    JFrame frame = new JFrame();
 
     GamePanel() {
         random = new Random();
@@ -29,50 +31,122 @@ public class GamePanel extends JPanel implements ActionListener {
         this.setFocusable(true);
         this.addKeyListener(new MyKeyAdapter());
         startGame();
+
     }
 
     public void startGame() {
         newApple();
-        running = true;
         timer = new Timer(DELAY, this);
         timer.start();
+        startScreen();
 
+    }
+
+    public void startScreen() {
+        JButton startButton = new JButton("Start Game");
+        startButton.setBounds(100, SCREEN_HEIGHT / 3, 400, 130);
+        startButton.setFont(new Font("Ink Free", Font.BOLD, 65));
+        startButton.setBackground(new Color(0, 0, 0));
+        startButton.setForeground(Color.RED);
+        startButton.setFocusPainted(false);
+        startButton.setBorderPainted(false);
+         startButton.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                startButton.setBackground(Color.GREEN);
+                startButton.setForeground(Color.BLACK);
+            }
+
+            public void mouseExited(MouseEvent e) {
+                startButton.setBackground(Color.BLACK);
+                startButton.setForeground(Color.RED);
+            }
+        });
+    
+        JButton colorButton = new JButton("Multi-Color Snake");
+        colorButton.setBounds(100, SCREEN_HEIGHT / 3 + 140, 400, 50);
+        colorButton.setFont(new Font("Ink Free", Font.BOLD, 25));
+        colorButton.setBackground(Color.BLACK);
+        colorButton.setForeground(Color.WHITE);
+        colorButton.addActionListener(e -> {
+            multiColorSnake = !multiColorSnake;
+            repaint();
+        });
+    
+        JButton gridButton = new JButton("Toggle Grid Lines");
+        gridButton.setBounds(100, SCREEN_HEIGHT / 3 + 210, 400, 50);
+        gridButton.setFont(new Font("Ink Free", Font.BOLD, 25));
+        gridButton.setBackground(Color.BLACK);
+        gridButton.setForeground(Color.WHITE);
+        gridButton.addActionListener(e -> {
+            showGrid = !showGrid;
+            repaint();
+        });
+    
+        startButton.addActionListener(e -> {
+            remove(startButton);
+            remove(gridButton);
+            remove(colorButton);
+            running = true;
+            requestFocusInWindow();
+            repaint();
+        });
+    
+        setLayout(null);
+        add(startButton);
+        add(gridButton);
+        add(colorButton);
     }
 
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
+        if (!running) {
+            startButtonColor(g); // If the game hasn't started show start screen
+        } else {
+            draw(g); // Game started draw the game elements
+            g.setColor(Color.darkGray);
+        }
         draw(g);
 
+    }
+
+    public void startButtonColor(Graphics g) {
+        g.setColor(Color.GRAY);
+        g.setFont(new Font("Ink Free", Font.BOLD, 75));
     }
 
     public void draw(Graphics g) {
 
         if (running) {
-            //Grid Lines for better visibility of UNIT_SIZE
-            /*  
-            for (int i = 0; i < SCREEN_HEIGHT / UNIT_SIZE; i++) {
-                g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, SCREEN_HEIGHT);
-                g.drawLine(0, i * UNIT_SIZE, SCREEN_WIDTH, i * UNIT_SIZE);
-            }*/
-            g.setColor(Color.red);
-            g.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
-                
-            for (int i = 0; i < bodyParts; i++) {
-                if (i == 0) {
-                    g.setColor(Color.green);
-                    g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
-                } else {
-                    g.setColor(new Color(45, 180, 0));
-                    //multi-color snake
-                    g.setColor(new Color(random.nextInt(255),random.nextInt(255),random.nextInt(255)));
-                    g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
-                      
+            // Grid Lines for better visibility of UNIT_SIZE
+
+            if (showGrid) {
+                for (int i = 0; i < SCREEN_HEIGHT / UNIT_SIZE; i++) {
+                    g.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, SCREEN_HEIGHT);
+                    g.drawLine(0, i * UNIT_SIZE, SCREEN_WIDTH, i * UNIT_SIZE);
                 }
             }
             g.setColor(Color.red);
+            g.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
+            
+
+
+            for (int i = 0; i < bodyParts; i++) {
+                if (i == 0) {
+                    g.setColor(Color.green);
+                } else if (multiColorSnake) {
+                    // Multi-color snake enabled
+                    g.setColor(new Color(random.nextInt(255), random.nextInt(255), random.nextInt(255)));
+                } else {
+                    g.setColor(new Color(45, 180, 0));
+                }
+                g.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
+             }
+
+            g.setColor(Color.red);
             g.setFont(new Font("Ink Free", Font.BOLD, 40));
             FontMetrics metrics = getFontMetrics(g.getFont());
-            g.drawString("Score: " + applesEaten, (SCREEN_WIDTH - metrics.stringWidth("Score: " + applesEaten)) / 2, g.getFont().getSize());
+            g.drawString("Score: " + applesEaten, (SCREEN_WIDTH - metrics.stringWidth("Score: " + applesEaten)) / 2,
+                    g.getFont().getSize());
         } else {
             gameOver(g);
         }
@@ -148,16 +222,17 @@ public class GamePanel extends JPanel implements ActionListener {
     }
 
     public void gameOver(Graphics g) {
-        //Score
+        // Score
         g.setColor(Color.red);
         g.setFont(new Font("Ink Free", Font.BOLD, 40));
         FontMetrics metrics1 = getFontMetrics(g.getFont());
-        g.drawString("Score: " + applesEaten, (SCREEN_WIDTH - metrics1.stringWidth("Score: " + applesEaten)) / 2, g.getFont().getSize());
-        //Game Over text
+        g.drawString("Score: " + applesEaten, (SCREEN_WIDTH - metrics1.stringWidth("Score: " + applesEaten)) / 2,
+                g.getFont().getSize());
+        // Game Over text
         g.setColor(Color.red);
-        g.setFont(new Font("Ink Free", Font.BOLD, 75));
+        g.setFont(new Font("Ink Free", Font.BOLD, 65));
         FontMetrics metrics2 = getFontMetrics(g.getFont());
-        g.drawString("Game Over", (SCREEN_WIDTH - metrics2.stringWidth("Game Over")) / 2, SCREEN_HEIGHT / 2);
+        g.drawString("Game Over", (SCREEN_WIDTH - metrics2.stringWidth("Game Over")) / 2, 260);
 
     }
 
